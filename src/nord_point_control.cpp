@@ -17,7 +17,7 @@ class PointControl
 
 	ros::Publisher twist_pub;
 	ros::Subscriber next_node_sub;
-	ros::Subscriber position_sub
+	ros::Subscriber position_sub;
 	
 	PointControl(char ** argv){
 		next_node_sub=n.subscribe("",1,&PointControl::NextNodeCallback, this);
@@ -46,10 +46,10 @@ class PointControl
 		p_vel=2.1; i_vel=0.2; d_vel=-0.16;
 		p_ang=3; i_ang=0.1; d_ang=-0.05;
 		
-		vel_pid =kontroll::pid<double>(p_vel, i_vel, d_vel);
+		vel_pid =kontroll::pid<float>(p_vel, i_vel, d_vel);
 		vel_pid.max =  0.6;//0.7 its equal to a PWM of approximately 160 and considering the 45º degree start moving forward this is the limit
 		vel_pid.min = -0.6;
-		ang_pid =kontroll::pid<double>(p_ang, i_ang, d_ang);
+		ang_pid =kontroll::pid<float>(p_ang, i_ang, d_ang);
 		ang_pid.max =  pi;//it can be bigger than 45º per sec because when its a pure turn the PWM starts at zero, and not with the forward vel
 		ang_pid.min = -pi;
 
@@ -144,9 +144,9 @@ class PointControl
 		ROS_INFO("vel: [%f]", twist.velocity);
  		ROS_INFO("ang_vel: [%f]", twist.angular_vel);
  		ROS_INFO("des_dist: [%f]", des_dist);
- 		ROS_INFO("est_dist: [%f]", dist_object);
- 		ROS_INFO("des_dir: [%f]", des_dir);
-		ROS_INFO("est_dir: [%f]", dir_object);
+ 		ROS_INFO("est_dist: [%f]", dist_point);
+ 		ROS_INFO("des_dir: [%f]", pos_dir);
+		ROS_INFO("est_dir: [%f]", dir_point);
  		ROS_INFO("p_vel: %f i_vel:%f  d_vel:%f ",p_vel,i_vel,d_vel);
  		ROS_INFO("p_ang: %f i_ang:%f  d_ang:%f ",p_ang,i_ang,d_ang);
 	}
