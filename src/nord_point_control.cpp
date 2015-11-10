@@ -1,12 +1,13 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
+#include "std_msgs/Bool.msg"
 #include <sstream>
 #include <string>
 #include "ras_arduino_msgs/PWM.h"
 #include "ras_arduino_msgs/Encoders.h"
 #include "nord_messages/MotorTwist.h"
 #include "nord_messages/NextNode.h"
-#include "nord_messages/Position.h"
+#include "nord_messages/PoseEstimate.h"//Delete Position....???
 
 #include "pid.hpp"
 class PointControl
@@ -18,11 +19,13 @@ class PointControl
 	ros::Publisher twist_pub;
 	ros::Subscriber next_node_sub;
 	ros::Subscriber position_sub;
+	ros::Publisher reach_pub;
 	
 	PointControl(char ** argv){
-		next_node_sub=n.subscribe("",1,&PointControl::NextNodeCallback, this);
+		next_node_sub=n.subscribe("/nord/control/point",1,&PointControl::NextNodeCallback, this);
 		position_sub=n.subscribe("",1,&PointControl::PositionCallback, this);
 		twist_pub = n.advertise<nord_messages::MotorTwist>("/motor_controller/twist", 1);
+		reach_pub= n.advertise<std_msgs::Bool>("/nord/houston/mission_result", 1);
 		
 		twist.velocity=0;
 		twist.angular_vel=0; 
@@ -37,7 +40,8 @@ class PointControl
 		pos_y=0;
 		pi = 3.141592;
 		dt=1.0/10;
-		des_dist=0;	
+		des_dist=0;
+		old=ros::Time::now();
 
 		/*p_vel = std::stod(argv[1]); 	p_ang = std::stod(argv[4]);
 		i_vel	= std::stod(argv[2]); 	i_ang = std::stod(argv[5]);
@@ -50,7 +54,7 @@ class PointControl
 		vel_pid.max =  0.6;//0.7 its equal to a PWM of approximately 160 and considering the 45º degree start moving forward this is the limit
 		vel_pid.min = -0.6;
 		ang_pid =kontroll::pid<float>(p_ang, i_ang, d_ang);
-		ang_pid.max =  pi;//it can be bigger than 45º per sec because when its a pure turn the PWM starts at zero, and not with the forward vel
+		ang_pid.max =  pi;//it can be bigger than 45deg per sec because when its a pure turn the PWM starts at zero, and not with the forward vel
 		ang_pid.min = -pi;
 
 		/*
@@ -62,8 +66,10 @@ class PointControl
 				vec_degree[x]=-25*pi/(180*(x+1));
 			}
 		}*/
-		// vec_dist={0.35,1,2,3,3.1,0.8,2,0.9,0.7,0.2,10,5,6,7,8,9,4.4,3.5,1.6,0.6};
-		// vec_degree={-10,1.1,5.6,9.2,10,-8.3,7,-5.6,-25,25.9,3,15.5,-6,-10.6,-7,-20,6.7,10,-7,3};
+		vec_x={1,1.6,1.2};
+		vec_y={0.23,0.23,0.23};
+		vec_i=0;
+		move=1;
 
 		// for (auto& e : vec_degree)
 		// {
@@ -96,14 +102,28 @@ class PointControl
 		move=command.move;
 	}
 	
-	void PositionCallback(const nord_messages::Position command){
-		pos_x=command.x;
-		pos_y=command.y;
-		pos_dir=command.direction;
-		dt=command.dt;
+	void PositionCallback(const nord_messages::PoseEstimate command){
+		pos_x=command.x.mean;
+		pos_y=command.y.mean;
+		pos_dir=command.theta.mean;
+		duration=command.stamp-old;
+		dt=duration.toSec;
+		old=command.stamp;
+		
+		float startmove=pi/12;
+		float dist_thres=0.05;
+		
 		
 		dist_point=sqrt(pow(float(next_x-pos_x),2.0)+pow(float(next_y-pos_y),2.0));
 		dir_point=atan2(float(next_y-pos_y),float(next_x-pos_x));
+		
+		if(dist_point<dist_thres){
+			msg_bool.data=true;
+			reach_pub.publish(msg_bool);
+			vec_i++;
+			next_x=vec_x[vec_i];
+			next_y=vec_y[vec_i];
+		}
 		
 		if(move==1){
 			if((dir_point-pos_dir)>pi){
@@ -129,7 +149,7 @@ class PointControl
 				dir_point+= (2*pi);
 			}
 			
-			if((dir_point-pos_dir)>(pi/4)||(dir_point-pos_dir)<-(pi/4)){
+			if((dir_point-pos_dir)>(startmove)||(dir_point-pos_dir)<-(startmove)){
 				dist_point=0;
 			}
 		}else{
@@ -155,14 +175,22 @@ class PointControl
 
 		nord_messages::MotorTwist twist; 
 		
-		//std::vector<double> vec_dist; std::vector<double> vec_degree;
+		std::vector<int> vec_x;
+		std::vector<int> vec_y;
+		//std::vector<double> vec_degree;
 		int next_x,next_y,move;
 		int pos_x,pos_y;
 		float pos_dir;
 		float pi;
-		float dt,dir_point,des_dist,dist_point;
+		float dir_point,des_dist,dist_point;
+		double dt;
 		float p_vel,i_vel,d_vel; float p_ang,i_ang,d_ang;
 		kontroll::pid<float> vel_pid; kontroll::pid<float> ang_pid;
+		ros::Time old;
+		ros::Duration duration;
+		std_msgs::bool msg_bool;
+		
+		int vec_i;//testing variable dlete after
 
 };
 int main(int argc, char **argv){
