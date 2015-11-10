@@ -1,6 +1,6 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
-#include "std_msgs/Bool.msg"
+#include "std_msgs/Bool.h"
 #include <sstream>
 #include <string>
 #include "ras_arduino_msgs/PWM.h"
@@ -23,7 +23,7 @@ class PointControl
 	
 	PointControl(char ** argv){
 		next_node_sub=n.subscribe("/nord/control/point",1,&PointControl::NextNodeCallback, this);
-		position_sub=n.subscribe("",1,&PointControl::PositionCallback, this);
+		position_sub=n.subscribe("/nord/estimation/gaussian",1,&PointControl::PositionCallback, this);
 		twist_pub = n.advertise<nord_messages::MotorTwist>("/motor_controller/twist", 1);
 		reach_pub= n.advertise<std_msgs::Bool>("/nord/houston/mission_result", 1);
 		
@@ -66,7 +66,7 @@ class PointControl
 				vec_degree[x]=-25*pi/(180*(x+1));
 			}
 		}*/
-		vec_x={1,1.6,1.2};
+		vec_x={1.0,1.6,1.2};
 		vec_y={0.23,0.23,0.23};
 		vec_i=0;
 		move=1;
@@ -107,7 +107,7 @@ class PointControl
 		pos_y=command.y.mean;
 		pos_dir=command.theta.mean;
 		duration=command.stamp-old;
-		dt=duration.toSec;
+		dt=duration.toSec();
 		old=command.stamp;
 		
 		float startmove=pi/12;
@@ -163,10 +163,12 @@ class PointControl
 	void print_info(){
 		ROS_INFO("vel: [%f]", twist.velocity);
  		ROS_INFO("ang_vel: [%f]", twist.angular_vel);
+		ROS_INFO("pos_x: %f pos_y: %f",pos_x,pos_y);
+		ROS_INFO("next_x: %f next_y: %f",next_x,next_y);
  		ROS_INFO("des_dist: [%f]", des_dist);
- 		ROS_INFO("est_dist: [%f]", dist_point);
- 		ROS_INFO("des_dir: [%f]", pos_dir);
-		ROS_INFO("est_dir: [%f]", dir_point);
+ 		ROS_INFO("dist_point: [%f]", dist_point);
+ 		ROS_INFO("pos_dir: [%f]", pos_dir);
+		ROS_INFO("dir_point: [%f]", dir_point);
  		ROS_INFO("p_vel: %f i_vel:%f  d_vel:%f ",p_vel,i_vel,d_vel);
  		ROS_INFO("p_ang: %f i_ang:%f  d_ang:%f ",p_ang,i_ang,d_ang);
 	}
@@ -175,11 +177,12 @@ class PointControl
 
 		nord_messages::MotorTwist twist; 
 		
-		std::vector<int> vec_x;
-		std::vector<int> vec_y;
+		std::vector<double> vec_x;
+		std::vector<double> vec_y;
 		//std::vector<double> vec_degree;
-		int next_x,next_y,move;
-		int pos_x,pos_y;
+		double next_x,next_y;
+		int move;
+		double pos_x,pos_y;
 		float pos_dir;
 		float pi;
 		float dir_point,des_dist,dist_point;
@@ -188,7 +191,7 @@ class PointControl
 		kontroll::pid<float> vel_pid; kontroll::pid<float> ang_pid;
 		ros::Time old;
 		ros::Duration duration;
-		std_msgs::bool msg_bool;
+		std_msgs::Bool msg_bool;
 		
 		int vec_i;//testing variable dlete after
 
