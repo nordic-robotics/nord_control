@@ -7,7 +7,7 @@
 #include "ras_arduino_msgs/Encoders.h"
 #include "nord_messages/MotorTwist.h"
 #include "nord_messages/NextNode.h"
-#include "nord_messages/PoseEstimate.h"//Delete Position....???
+#include "nord_messages/PoseEstimate.h"
 
 #include "pid.hpp"
 class PointControl
@@ -131,7 +131,7 @@ class PointControl
 			}else if((dir_point-pos_dir)>-pi){
 				dir_point+= (2*pi);
 			}
-			if((dir_point-pos_dir)>(pi/4)||(dir_point-pos_dir)<-(pi/4)){
+			if((dir_point-pos_dir)>(startmove)||(dir_point-pos_dir)<-(startmove)){
 				dist_point=0;
 			}
 		}else if(move==2){
