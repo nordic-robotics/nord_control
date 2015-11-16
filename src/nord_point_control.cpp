@@ -52,7 +52,7 @@ class PointControl
 		p_ang=1.5; i_ang=0.3; d_ang=-0.1;
 		
 		vel_pid =kontroll::pid<float>(p_vel, i_vel, d_vel);
-		vel_pid.max =  0.6;//0.7 its equal to a PWM of approximately 160 and considering the 45º degree start moving forward this is the limit
+		vel_pid.max =  0.5;//0.7 its equal to a PWM of approximately 160 and considering the 45º degree start moving forward this is the limit
 		vel_pid.min = -0.6;
 		ang_pid =kontroll::pid<float>(p_ang, i_ang, d_ang);
 		ang_pid.max =  pi;//it can be bigger than 45deg per sec because when its a pure turn the PWM starts at zero, and not with the forward vel
@@ -68,7 +68,7 @@ class PointControl
 			}
 		}*/
 		vec_x={2.25,2.25,1.83,1.83,1.83,2.25,2.25,0.795};
-		vec_y={0.23,0.7,0.7,1.25,0.7,0.7,0.23,0.23};
+		vec_y={0.23,0.7,0.7,1.08,0.7,0.7,0.23,0.23};
 		vec_i=0;
 		next_x=vec_x[vec_i];
 		next_y=vec_y[vec_i];
@@ -111,7 +111,7 @@ class PointControl
 	void PositionCallback(const nord_messages::PoseEstimate command){
 		pos_x=command.x.mean;
 		pos_y=command.y.mean;
-		pos_dir=-command.theta.mean;
+		pos_dir=command.theta.mean;
 		duration=command.stamp-old;
 		dt=duration.toSec();
 		old=command.stamp;
@@ -124,8 +124,8 @@ class PointControl
 
 		x1=next_x-pos_x;
 		y1=next_y-pos_y;
-		x=(cos(pos_dir)*x1)-(sin(pos_dir)*y1);
-		y=(sin(pos_dir)*x1)+(cos(pos_dir)*y1);	
+		x=(cos(-pos_dir)*x1)-(sin(-pos_dir)*y1);
+		y=(sin(-pos_dir)*x1)+(cos(-pos_dir)*y1);	
 		
 		dist_point=sqrt(pow((next_x-pos_x),2.0)+pow((next_y-pos_y),2.0));
 		dir_point=atan2(y,x);
