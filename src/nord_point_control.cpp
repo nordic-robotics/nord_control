@@ -48,15 +48,29 @@ class PointControl
 		i_vel	= std::stod(argv[2]); 	i_ang = std::stod(argv[5]);
 		d_vel = std::stod(argv[3]);   d_ang = std::stod(argv[6]);*/
 		
-		p_vel=0.6; i_vel=0.07; d_vel=-0.04;
-		p_ang=1.5; i_ang=0.3; d_ang=-0.1;
+		p_vel=1; i_vel=0.15; d_vel=-0.03;
+		p_ang=2; i_ang=0.1; d_ang=-0.045;
+		p_ang_mov=11; i_ang_mov=7; d_ang_mov=-0.055;
 		
 		vel_pid =kontroll::pid<float>(p_vel, i_vel, d_vel);
 		vel_pid.max =  0.5;//0.7 its equal to a PWM of approximately 160 and considering the 45º degree start moving forward this is the limit
-		vel_pid.min = -0.6;
+		vel_pid.min = -0.5;
 		ang_pid =kontroll::pid<float>(p_ang, i_ang, d_ang);
-		ang_pid.max =  pi;//it can be bigger than 45deg per sec because when its a pure turn the PWM starts at zero, and not with the forward vel
-		ang_pid.min = -pi;
+		ang_pid.max =  2*pi;//it can be bigger than 45deg per sec because when its a pure turn the PWM starts at zero, and not with the forward vel
+		ang_pid.min = -2*pi;
+		ang_mov_pid=kontroll::pid<float>(p_ang_mov, i_ang_mov, d_ang_mov);
+		ang_mov_pid= pi;
+		ang_mov_pid=-pi;
+		
+		ang_pid.last_error = 0;
+        ang_pid.last_input = 0;
+        ang_pid.error_sum = 0;
+		ang_mov_pid.last_error = 0;
+        ang_mov_pid.last_input = 0;
+        ang_mov_pid.error_sum = 0;
+		
+		ang_cont=0;
+		last_ang_cont=0;
 
 		/*
 		for(x=0;x<1000;x++){//testing
@@ -84,11 +98,27 @@ class PointControl
 	void  ControlPart(){
 		
 		twist.velocity= vel_pid(des_dist,dist_point , dt);
-   		twist.angular_vel = ang_pid(pos_dir, dir_point, dt);
+   		
 		
 		if(des_dist==dist_point){
+			ang_cont=2;
+			if(ang_cont!=last_ang_cont){
+				ang_mov_pid.last_error = 0;
+				ang_mov_pid.last_input = 0;
+				ang_mov_pid.error_sum = 0;
+			}
 			twist.velocity=0;
+			twist.angular_vel = ang_mov_pid(pos_dir, dir_point, dt);
+		}else{
+			ang_cont=1;
+			if(ang_cont!=last_ang_cont){
+				ang_pid.last_error = 0;
+				ang_pid.last_input = 0;
+				ang_pid.error_sum = 0;
+			}
+			twist.angular_vel = ang_pid(pos_dir, dir_point, dt);
 		}
+		last_ang_cont=ang_cont;
 	/*	if(real_vel<0.3 && real_vel>0){
 			real_vel=0;
 		}else if(real_vel>-0.3 && real_vel<0){
@@ -215,10 +245,12 @@ class PointControl
 		double dir_point,des_dist,dist_point;
 		double dt;
 		float p_vel,i_vel,d_vel; float p_ang,i_ang,d_ang;
-		kontroll::pid<float> vel_pid; kontroll::pid<float> ang_pid;
+		kontroll::pid<float> vel_pid; kontroll::pid<float> ang_pid; kontroll::pid<float> ang_mov_pid;
 		ros::Time old;
 		ros::Duration duration;
 		std_msgs::Bool msg_bool;
+		int ang_cont;
+		int last_ang_cont;
 		
 		int vec_i;//testing variable dlete after
 

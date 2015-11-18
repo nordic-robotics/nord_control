@@ -7,9 +7,6 @@ namespace kontroll
     template<class T>
     class pid
     {
-        T last_error = 0;
-        T last_input = 0;
-        T error_sum = 0;
      
         T clamp(T X, T min, T max)
         {
@@ -23,6 +20,9 @@ namespace kontroll
         T k_p, k_i, k_d;
         T min = 0;
         T max = 0;
+		T last_error = 0;
+        T last_input = 0;
+        T error_sum = 0;
 
         T operator()(T input, T target, T delta_time)
         {
