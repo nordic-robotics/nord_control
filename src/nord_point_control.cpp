@@ -48,19 +48,19 @@ class PointControl
 		i_vel	= std::stod(argv[2]); 	i_ang = std::stod(argv[5]);
 		d_vel = std::stod(argv[3]);   d_ang = std::stod(argv[6]);*/
 		
-		p_vel=1; i_vel=0.15; d_vel=-0.03;
-		p_ang=2; i_ang=0.1; d_ang=-0.045;
-		p_ang_mov=11; i_ang_mov=7; d_ang_mov=-0.055;
+		p_vel=0.9; i_vel=0.01; d_vel=-0.005;
+		p_ang=1.5; i_ang=0.04; d_ang=-0.01;
+		p_ang_mov=1.5; i_ang_mov=0.5; d_ang_mov=-0.0225;
 		
-		vel_pid =kontroll::pid<float>(p_vel, i_vel, d_vel);
-		vel_pid.max =  0.5;//0.7 its equal to a PWM of approximately 160 and considering the 45º degree start moving forward this is the limit
-		vel_pid.min = -0.5;
-		ang_pid =kontroll::pid<float>(p_ang, i_ang, d_ang);
-		ang_pid.max =  2*pi;//it can be bigger than 45deg per sec because when its a pure turn the PWM starts at zero, and not with the forward vel
-		ang_pid.min = -2*pi;
-		ang_mov_pid=kontroll::pid<float>(p_ang_mov, i_ang_mov, d_ang_mov);
-		ang_mov_pid= pi;
-		ang_mov_pid=-pi;
+		vel_pid =kontroll::pid<double>(p_vel, i_vel, d_vel);
+		vel_pid.max =  0.3;//0.7 its equal to a PWM of approximately 160 and considering the 45º degree start moving forward this is the limit
+		vel_pid.min = -0.3;
+		ang_pid =kontroll::pid<double>(p_ang, i_ang, d_ang);
+		ang_pid.max =  pi;//it can be bigger than 45deg per sec because when its a pure turn the PWM starts at zero, and not with the forward vel
+		ang_pid.min = -pi;
+		ang_mov_pid=kontroll::pid<double>(p_ang_mov, i_ang_mov, d_ang_mov);
+		ang_mov_pid.max= pi;
+		ang_mov_pid.min=-pi;
 		
 		ang_pid.last_error = 0;
         ang_pid.last_input = 0;
@@ -79,10 +79,10 @@ class PointControl
 				vec_degree[x]=25*pi/(180*(x+1));
 			}else{
 				vec_degree[x]=-25*pi/(180*(x+1));
-			}
+			}s
 		}*/
-		vec_x={2.25,2.25,1.83,1.83,1.83,2.25,2.25,0.795};
-		vec_y={0.23,0.7,0.7,1.08,0.7,0.7,0.23,0.23};
+		vec_x={0.17,0.17,0.17,0.17,0.17};
+		vec_y={2.1,1.0,1.0,1.0,1.0};
 		vec_i=0;
 		next_x=vec_x[vec_i];
 		next_y=vec_y[vec_i];
@@ -100,25 +100,33 @@ class PointControl
 		twist.velocity= vel_pid(des_dist,dist_point , dt);
    		
 		
-		if(des_dist==dist_point){
+		/*if(des_dist!=dist_point){
 			ang_cont=2;
 			if(ang_cont!=last_ang_cont){
+				ROS_INFO("STARTED AGAIN: %f",dir_point);
 				ang_mov_pid.last_error = 0;
 				ang_mov_pid.last_input = 0;
 				ang_mov_pid.error_sum = 0;
 			}
-			twist.velocity=0;
-			twist.angular_vel = ang_mov_pid(pos_dir, dir_point, dt);
+			twist.angular_vel = ang_mov_pid(0, dir_point, dt);
 		}else{
 			ang_cont=1;
 			if(ang_cont!=last_ang_cont){
+				ROS_INFO("STARTED AGAIN: %f",dir_point);
 				ang_pid.last_error = 0;
 				ang_pid.last_input = 0;
 				ang_pid.error_sum = 0;
 			}
-			twist.angular_vel = ang_pid(pos_dir, dir_point, dt);
+			twist.velocity=0;
+			twist.angular_vel = ang_pid(0, dir_point, dt);
 		}
-		last_ang_cont=ang_cont;
+		last_ang_cont=ang_cont;*/
+		if(des_dist==dist_point){
+			twist.velocity=0;
+		}
+		twist.angular_vel = ang_pid(0, dir_point, dt);
+
+
 	/*	if(real_vel<0.3 && real_vel>0){
 			real_vel=0;
 		}else if(real_vel>-0.3 && real_vel<0){
@@ -146,8 +154,8 @@ class PointControl
 		dt=duration.toSec();
 		old=command.stamp;
 		
-		float startmove=pi/7;
-		float dist_thres=0.095;
+		double startmove=pi/22;
+		double dist_thres=0.025;
 
 		double x1,y1;
 		double x,y;
@@ -159,13 +167,11 @@ class PointControl
 		
 		dist_point=sqrt(pow((next_x-pos_x),2.0)+pow((next_y-pos_y),2.0));
 		dir_point=atan2(y,x);
-		ROS_INFO("dir_point: [%f] pos_dir:%f", dir_point,pos_dir);
+		//ROS_INFO("dir_point: [%f] pos_dir:%f", dir_point,pos_dir);
 		/*ROS_INFO("dist_point:%f",dist_point);
 		ROS_INFO("pos_x: %f pos_y: %f",pos_x,pos_y);
 		ROS_INFO("next_x: %f next_y: %f",next_x,next_y);*/
-		ROS_INFO("x: %f y: %f",x,y);
-
-		pos_dir=0;
+		//ROS_INFO("x: %f y: %f",x,y);
 
 		if(dir_point>pi){
 			dir_point-=2*pi;
@@ -177,7 +183,7 @@ class PointControl
 			msg_bool.data=true;
 			reach_pub.publish(msg_bool);
 			vec_i++;
-			if(vec_i>7){
+			if(vec_i>4){
 				move=0;
 			}
 			next_x=vec_x[vec_i];
@@ -190,7 +196,7 @@ class PointControl
 			}else if((dir_point-pos_dir)<-pi){
 				dir_point+= (2*pi);
 			}*/
-			if((dir_point-pos_dir)>(startmove)||(dir_point-pos_dir)<-(startmove)){
+			if((dir_point-0)>(startmove)||(dir_point-0)<-(startmove)){
 				dist_point=0;
 			}
 		}else if(move==2){
@@ -208,15 +214,16 @@ class PointControl
 				dir_point+= (2*pi);
 			}*/
 			
-			if((dir_point-pos_dir)>(startmove)||(dir_point-pos_dir)<-(startmove)){
+			if((dir_point-0)>(startmove)||(dir_point-0)<-(startmove)){
 				dist_point=0;
 			}
 		}else{
 			dist_point=des_dist;
-			dir_point=pos_dir;
+			dir_point=0;
 		}
 		//ROS_INFO("dir_point: [%f] pos_dir:%f", dir_point,pos_dir);
 		ControlPart();
+		print_info();
 	}
 	
 	void print_info(){
@@ -225,7 +232,7 @@ class PointControl
 		ROS_INFO("dir_point: [%f] pos_dir:%f", dir_point,pos_dir);
 		ROS_INFO("dist_point:%f",dist_point);
 		ROS_INFO("pos_x: %f pos_y: %f",pos_x,pos_y);
-		ROS_INFO("next_x: %f next_y: %f",next_x,next_y);
+		ROS_INFO("next_x: %f next_y: %f\n",next_x,next_y);
  		//ROS_INFO("p_vel: %f i_vel:%f  d_vel:%f ",p_vel,i_vel,d_vel);
  		//ROS_INFO("p_ang: %f i_ang:%f  d_ang:%f ",p_ang,i_ang,d_ang);
 	}
@@ -244,8 +251,9 @@ class PointControl
 		double pi;
 		double dir_point,des_dist,dist_point;
 		double dt;
-		float p_vel,i_vel,d_vel; float p_ang,i_ang,d_ang;
-		kontroll::pid<float> vel_pid; kontroll::pid<float> ang_pid; kontroll::pid<float> ang_mov_pid;
+		double p_vel,i_vel,d_vel; double p_ang,i_ang,d_ang;
+		double p_ang_mov, i_ang_mov, d_ang_mov;
+		kontroll::pid<double> vel_pid; kontroll::pid<double> ang_pid; kontroll::pid<double> ang_mov_pid;
 		ros::Time old;
 		ros::Duration duration;
 		std_msgs::Bool msg_bool;
@@ -271,7 +279,7 @@ int main(int argc, char **argv){
  
 		
 		ros::spinOnce();
-		run.print_info();
+		
 		loop_rate.sleep(); // go to sleep
 
 	}
