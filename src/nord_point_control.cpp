@@ -50,11 +50,11 @@ class PointControl
 		
 		p_vel=0.9; i_vel=0.01; d_vel=-0.005;
 		p_ang=1.5; i_ang=0.04; d_ang=-0.01;
-		p_ang_mov=1.5; i_ang_mov=0.5; d_ang_mov=-0.0225;
+		p_ang_mov=3; i_ang_mov=0.5; d_ang_mov=-0.0225;
 		
 		vel_pid =kontroll::pid<double>(p_vel, i_vel, d_vel);
-		vel_pid.max =  0.3;//0.7 its equal to a PWM of approximately 160 and considering the 45º degree start moving forward this is the limit
-		vel_pid.min = -0.3;
+		vel_pid.max =  0.4;//0.7 its equal to a PWM of approximately 160 and considering the 45º degree start moving forward this is the limit
+		vel_pid.min = -0.4;
 		ang_pid =kontroll::pid<double>(p_ang, i_ang, d_ang);
 		ang_pid.max =  pi;//it can be bigger than 45deg per sec because when its a pure turn the PWM starts at zero, and not with the forward vel
 		ang_pid.min = -pi;
@@ -81,8 +81,8 @@ class PointControl
 				vec_degree[x]=-25*pi/(180*(x+1));
 			}s
 		}*/
-		vec_x={0.17,0.17,0.17,0.17,0.17};
-		vec_y={2.1,1.0,1.0,1.0,1.0};
+		vec_x={0.17,0.17,0.99,0.99,0.17,0.17,0.99,0.99};
+		vec_y={2.1,1.04,1.04,2.11,2.1,1.04,1.04,2.11};
 		vec_i=0;
 		next_x=vec_x[vec_i];
 		next_y=vec_y[vec_i];
@@ -100,7 +100,7 @@ class PointControl
 		twist.velocity= vel_pid(des_dist,dist_point , dt);
    		
 		
-		/*if(des_dist!=dist_point){
+		if(des_dist!=dist_point){
 			ang_cont=2;
 			if(ang_cont!=last_ang_cont){
 				ROS_INFO("STARTED AGAIN: %f",dir_point);
@@ -120,11 +120,11 @@ class PointControl
 			twist.velocity=0;
 			twist.angular_vel = ang_pid(0, dir_point, dt);
 		}
-		last_ang_cont=ang_cont;*/
-		if(des_dist==dist_point){
+		last_ang_cont=ang_cont;
+	/*	if(des_dist==dist_point){
 			twist.velocity=0;
 		}
-		twist.angular_vel = ang_pid(0, dir_point, dt);
+		twist.angular_vel = ang_pid(0, dir_point, dt);*/
 
 
 	/*	if(real_vel<0.3 && real_vel>0){
@@ -183,7 +183,7 @@ class PointControl
 			msg_bool.data=true;
 			reach_pub.publish(msg_bool);
 			vec_i++;
-			if(vec_i>4){
+			if(vec_i>8){
 				move=0;
 			}
 			next_x=vec_x[vec_i];
