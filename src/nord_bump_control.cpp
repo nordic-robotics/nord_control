@@ -3,6 +3,7 @@
 #include "std_msgs/Bool.h"
 #include "nord_messages/NextNode.h"
 #include "nord_messages/PoseEstimate.h"
+#include "nord_messages/Vector2.h"
 #include <sstream>
 #include <string>
 
