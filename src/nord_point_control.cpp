@@ -24,7 +24,7 @@ class PointControl
 	
 	PointControl(char ** argv){
 		next_node_sub=n.subscribe("/nord/control/point",1,&PointControl::NextNodeCallback, this);
-		position_sub=n.subscribe("/nord/estimation/gaussian",1,&PointControl::PositionCallback, this);
+		position_sub=n.subscribe("/nord/estimation/pose_estimation",1,&PointControl::PositionCallback, this);
 		twist_pub = n.advertise<nord_messages::MotorTwist>("/nord/motor_controller/twist", 1);
 		reach_pub= n.advertise<std_msgs::Bool>("/nord/houston/mission_result", 1);
 		
@@ -144,6 +144,7 @@ class PointControl
 		next_x=command.x;
 		next_y=command.y;
 		move=command.move;
+		msg_bool.data=false;
 	}
 	
 	void PositionCallback(const nord_messages::PoseEstimate command){
@@ -179,15 +180,24 @@ class PointControl
 			dir_point+=2*pi;
 		}
 
-		if(dist_point<=dist_thres){
+		if(dist_point<=dist_thres && msg_bool.data==false ){
 			msg_bool.data=true;
 			reach_pub.publish(msg_bool);
+			
+			
+			ros::Publisher next_node_pub;
+			next_node_pub=n.advertise<nord_messages::NextNode>("/nord/control/point",1);
+			
+			nord_messages::NextNode ola;
+			
 			vec_i++;
 			if(vec_i>8){
 				move=0;
 			}
-			next_x=vec_x[vec_i];
-			next_y=vec_y[vec_i];
+			ola.x=vec_x[vec_i];
+			ola.y=vec_y[vec_i];
+			ola.move=1;
+			next_node_pub.publish(ola);
 		}
 		
 		if(move==1){
@@ -270,7 +280,7 @@ int main(int argc, char **argv){
 		return 1;
 	}*/
 	
-	ros::init(argc, argv, "nord_twist_publisher");
+	ros::init(argc, argv, "nord_point_control");
 	
 	PointControl run(argv); 
 	ros::Rate loop_rate(10);
