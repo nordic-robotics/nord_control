@@ -14,9 +14,11 @@ ros::NodeHandle n;
 ros::Subscriber position_sub;
 ros::Subscriber next_node_sub;
 ros::Publisher next_node_pub;
-ros::Publisher bump_pub;
+ros::Subscriber bump_sub;
+ros::Subscriber reach_sub;
 
-std::bool flag_bump;
+
+bool flag_bump;
 
 void PositionCallback(const nord_messages::PoseEstimate command){
 	pos_x=command.x.mean;
@@ -70,11 +72,11 @@ int main(int argc, char **argv){
 	pi = 3.141592;
 	ros::init(argc, argv, "nord_bump_control");
 	
-	position_sub=n.subscribe("/nord/estimation/pose_estimation",1,&PositionCallback, this);
-	next_node_sub=n.subscribe("/nord/control/point",1,&NextNodeCallback, this);
-	bump_sub=n.subscribe("/imu/bump",1,&BumpCallback, this);
+	position_sub=n.subscribe("/nord/estimation/pose_estimation",1,&PositionCallback);
+	next_node_sub=n.subscribe("/nord/control/point",1,&NextNodeCallback);
+	bump_sub=n.subscribe("/imu/bump",1,&BumpCallback);
 	next_node_pub=n.advertise<nord_messages::NextNode>("/nord/control/point",1);
-	reach_sub= n.subscribe<std_msgs::Bool>("/nord/houston/mission_result", 1,&ReachCallback,this);
+	reach_sub= n.subscribe<std_msgs::Bool>("/nord/houston/mission_result", 1,&ReachCallback);
 	
 	pos_x=pos_y=pos_dir=0;
 	next_x=next_y=old_x=old_y=0;

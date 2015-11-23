@@ -53,7 +53,7 @@ class PointControl
 		p_ang_mov=3; i_ang_mov=0.5; d_ang_mov=-0.0225;
 		
 		vel_pid =kontroll::pid<double>(p_vel, i_vel, d_vel);
-		vel_pid.max =  0.4;//0.7 its equal to a PWM of approximately 160 and considering the 45º degree start moving forward this is the limit
+		vel_pid.max =  0.4;//0.7 its equal to a PWM of approximately 160 and considering the 45? degree start moving forward this is the limit
 		vel_pid.min = -0.4;
 		ang_pid =kontroll::pid<double>(p_ang, i_ang, d_ang);
 		ang_pid.max =  pi;//it can be bigger than 45deg per sec because when its a pure turn the PWM starts at zero, and not with the forward vel

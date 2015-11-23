@@ -130,6 +130,7 @@ include_directories(
 ## Declare a C++ executable
 
 add_executable(nord_point_control src/nord_point_control.cpp)
+add_executable(nord_bump_control src/nord_bump_control.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
