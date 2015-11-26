@@ -11,6 +11,9 @@
 #include <math.h>
 
 #include "pid.hpp"
+
+/*ros::Publisher next_node_pub;
+nord_messages::NextNode ola;*/
 class PointControl
 {
 	public:
@@ -27,6 +30,8 @@ class PointControl
 		position_sub=n.subscribe("/nord/estimation/pose_estimation",1,&PointControl::PositionCallback, this);
 		twist_pub = n.advertise<nord_messages::MotorTwist>("/nord/motor_controller/twist", 1);
 		reach_pub= n.advertise<std_msgs::Bool>("/nord/houston/mission_result", 1);
+
+		//next_node_pub=n.advertise<nord_messages::NextNode>("/nord/control/point",1);
 		
 		twist.velocity=0;
 		twist.angular_vel=0; 
@@ -48,13 +53,13 @@ class PointControl
 		i_vel	= std::stod(argv[2]); 	i_ang = std::stod(argv[5]);
 		d_vel = std::stod(argv[3]);   d_ang = std::stod(argv[6]);*/
 		
-		p_vel=0.9; i_vel=0.01; d_vel=-0.005;
-		p_ang=1.5; i_ang=0.04; d_ang=-0.01;
-		p_ang_mov=3; i_ang_mov=0.5; d_ang_mov=-0.0225;
+		p_vel=0.9; i_vel=0.08; d_vel=-0.005;
+		p_ang=1.5; i_ang=0.15; d_ang=-0.01;
+		p_ang_mov=2.5; i_ang_mov=0.25; d_ang_mov=-0.01;
 		
 		vel_pid =kontroll::pid<double>(p_vel, i_vel, d_vel);
-		vel_pid.max =  0.4;//0.7 its equal to a PWM of approximately 160 and considering the 45? degree start moving forward this is the limit
-		vel_pid.min = -0.4;
+		vel_pid.max =  0.25;//0.7 its equal to a PWM of approximately 160 and considering the 45? degree start moving forward this is the limit
+		vel_pid.min = -0.25;
 		ang_pid =kontroll::pid<double>(p_ang, i_ang, d_ang);
 		ang_pid.max =  pi;//it can be bigger than 45deg per sec because when its a pure turn the PWM starts at zero, and not with the forward vel
 		ang_pid.min = -pi;
@@ -81,13 +86,14 @@ class PointControl
 				vec_degree[x]=-25*pi/(180*(x+1));
 			}s
 		}*/
-		vec_x={0.17,0.17,0.99,0.99,0.17,0.17,0.99,0.99};
-		vec_y={2.1,1.04,1.04,2.11,2.1,1.04,1.04,2.11};
+		/*vec_x={0.17,0.17,0.17,0.5,0.99,0.99,0.99,0.17,0.17,0.99,0.99};
+		vec_y={2.1,1.5,1.04,1.04,1.04,1.5,2.11,2.1,1.04,1.04,2.11};
 		vec_i=0;
 		next_x=vec_x[vec_i];
 		next_y=vec_y[vec_i];
 		move=1;
-
+		bump_flag=0;
+		*/
 		// for (auto& e : vec_degree)
 		// {
 		// 	e *= pi/180;
@@ -121,6 +127,11 @@ class PointControl
 			twist.angular_vel = ang_pid(0, dir_point, dt);
 		}
 		last_ang_cont=ang_cont;
+
+		if(dir_point==0){
+			twist.angular_vel=0;
+			last_ang_cont=0;
+		}
 	/*	if(des_dist==dist_point){
 			twist.velocity=0;
 		}
@@ -144,6 +155,10 @@ class PointControl
 		next_x=command.x;
 		next_y=command.y;
 		move=command.move;
+
+	/*	if(msg_bool.data==false){
+			bump_flag=1;
+		}*/
 		msg_bool.data=false;
 	}
 	
@@ -154,8 +169,13 @@ class PointControl
 		duration=command.stamp-old;
 		dt=duration.toSec();
 		old=command.stamp;
-		
-		double startmove=pi/22;
+		if(dt==0){
+			ROS_INFO("TIME IS FUCKED YO");
+			exit(1);
+		}		
+
+
+		double startmove=pi/40;
 		double dist_thres=0.025;
 
 		double x1,y1;
@@ -180,24 +200,27 @@ class PointControl
 			dir_point+=2*pi;
 		}
 
-		if(dist_point<=dist_thres && msg_bool.data==false ){
+		if(dist_point<=dist_thres && msg_bool.data==false ){//take out msg_bool....
+			/*if(bump_flag==1){
+				bump_flag=0;
+			}else{*/
 			msg_bool.data=true;
+			//}
+			move=0;
 			reach_pub.publish(msg_bool);
 			
-			
-			ros::Publisher next_node_pub;
-			next_node_pub=n.advertise<nord_messages::NextNode>("/nord/control/point",1);
-			
-			nord_messages::NextNode ola;
-			
-			vec_i++;
+		/*	vec_i++;
 			if(vec_i>8){
 				move=0;
-			}
-			ola.x=vec_x[vec_i];
+			}*/
+			/*ola.x=vec_x[vec_i];
 			ola.y=vec_y[vec_i];
-			ola.move=1;
-			next_node_pub.publish(ola);
+			ola.move=3;*/
+			/*next_x=vec_x[vec_i];
+			next_y=vec_y[vec_i];
+			move=1;
+			msg_bool.data=false;*/
+			
 		}
 		
 		if(move==1){
@@ -240,7 +263,7 @@ class PointControl
 		ROS_INFO("vel: [%f]", twist.velocity);
  		ROS_INFO("ang_vel: [%f]", twist.angular_vel);
 		ROS_INFO("dir_point: [%f] pos_dir:%f", dir_point,pos_dir);
-		ROS_INFO("dist_point:%f",dist_point);
+		ROS_INFO("dist_point:%f , dt_pf:%f",dist_point,dt);
 		ROS_INFO("pos_x: %f pos_y: %f",pos_x,pos_y);
 		ROS_INFO("next_x: %f next_y: %f\n",next_x,next_y);
  		//ROS_INFO("p_vel: %f i_vel:%f  d_vel:%f ",p_vel,i_vel,d_vel);
@@ -271,6 +294,7 @@ class PointControl
 		int last_ang_cont;
 		
 		int vec_i;//testing variable dlete after
+		int bump_flag;
 
 };
 int main(int argc, char **argv){
@@ -289,7 +313,10 @@ int main(int argc, char **argv){
  
 		
 		ros::spinOnce();
-		
+		/*if(ola.move==3){
+			ola.move=1;
+			next_node_pub.publish(ola);
+		}*/
 		loop_rate.sleep(); // go to sleep
 
 	}

@@ -20,7 +20,7 @@ namespace kontroll
         T k_p, k_i, k_d;
         T min = 0;
         T max = 0;
-		T last_error = 0;
+	T last_error = 0;
         T last_input = 0;
         T error_sum = 0;
 
