@@ -177,6 +177,7 @@ class PointControl
 
 		double startmove=pi/40;
 		double dist_thres=0.025;
+		double dir_thres=pi/90;
 
 		double x1,y1;
 		double x,y;
@@ -187,20 +188,28 @@ class PointControl
 		y=(sin(-pos_dir)*x1)+(cos(-pos_dir)*y1);	
 		
 		dist_point=sqrt(pow((next_x-pos_x),2.0)+pow((next_y-pos_y),2.0));
+		
+		if(y==0 && x==0){
+			ROS_INFO("ERROR:atan2 would return 0, control was not performed");
+			return;
+		}		
+
 		dir_point=atan2(y,x);
 		//ROS_INFO("dir_point: [%f] pos_dir:%f", dir_point,pos_dir);
 		/*ROS_INFO("dist_point:%f",dist_point);
 		ROS_INFO("pos_x: %f pos_y: %f",pos_x,pos_y);
 		ROS_INFO("next_x: %f next_y: %f",next_x,next_y);*/
 		//ROS_INFO("x: %f y: %f",x,y);
-
+		ROS_INFO("HELLO %f %f %f %d",dir_point,x1,y1,move);
 		if(dir_point>pi){
 			dir_point-=2*pi;
 		}else if(dir_point<-pi){
 			dir_point+=2*pi;
 		}
 
-		if(dist_point<=dist_thres && msg_bool.data==false ){//take out msg_bool....
+		
+
+		if(((dist_point<=dist_thres && move!=3) || (dir_point<=dir_thres && move==3)) && msg_bool.data==false ){//take out msg_bool....
 			/*if(bump_flag==1){
 				bump_flag=0;
 			}else{*/
@@ -208,6 +217,7 @@ class PointControl
 			//}
 			move=0;
 			reach_pub.publish(msg_bool);
+			ROS_INFO("Published True");
 			
 		/*	vec_i++;
 			if(vec_i>8){
@@ -250,6 +260,8 @@ class PointControl
 			if((dir_point-0)>(startmove)||(dir_point-0)<-(startmove)){
 				dist_point=0;
 			}
+		}else if(move==3){
+			dist_point=0;
 		}else{
 			dist_point=des_dist;
 			dir_point=0;
