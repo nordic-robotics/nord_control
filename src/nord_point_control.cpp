@@ -40,7 +40,7 @@ class PointControl
 		dir_point =0;
 		next_x=0;
 		next_y=0;
-		move=0;
+		move=10;
 		pos_dir=0;
 		pos_x=0;
 		pos_y=0;
@@ -168,8 +168,9 @@ class PointControl
 		
 		// est_dist +=twist.linear.x*dt;
 		// est_dir +=twist.angular.z*dt;
-		
-		twist_pub.publish(twist);
+		if(move!=10){
+			twist_pub.publish(twist);
+		}
 	}
 	
 	void NextNodeCallback(const nord_messages::NextNode command){
