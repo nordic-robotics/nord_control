@@ -35,6 +35,7 @@ class PointControl
 		
 		twist.velocity=0;
 		twist.angular_vel=0; 
+		last_vel=0;
 
 		dist_point=0; 
 		dir_point =0;
@@ -52,14 +53,18 @@ class PointControl
 		p_ang_mov = std::stod(argv[1]); 	p_ang = std::stod(argv[4]);
 		i_ang_mov	= std::stod(argv[2]); 	i_ang = std::stod(argv[5]);
 		d_ang_mov = std::stod(argv[3]);   d_ang = std::stod(argv[6]);
+
+		p_vel = std::stod(argv[7]); 	
+		i_vel	= std::stod(argv[8]); 	
+		d_vel = std::stod(argv[9]);   
 		
-		p_vel=0.9; i_vel=0.08; d_vel=-0.05;
-		/*p_ang=1.4; i_ang=0; d_ang=-0.14;
+		/*p_vel=2; i_vel=0.08; d_vel=-0.05;
+		p_ang=1.4; i_ang=0; d_ang=-0.14;
 		p_ang_mov=4; i_ang_mov=0; d_ang_mov=-0.2;*/
 		
 		vel_pid =kontroll::pid<double>(p_vel, i_vel, d_vel);
-		vel_pid.max =  0.55;//0.7 its equal to a PWM of approximately 160 and considering the 45? degree start moving forward this is the limit
-		vel_pid.min = -0.55;
+		vel_pid.max =  0.5;//0.7 its equal to a PWM of approximately 160 and considering the 45? degree start moving forward this is the limit
+		vel_pid.min = -0.5;
 		ang_pid =kontroll::pid<double>(p_ang, i_ang, d_ang);
 		ang_pid.max =  2*pi;//it can be bigger than 45deg per sec because when its a pure turn the PWM starts at zero, and not with the forward vel
 		ang_pid.min = -2*pi;
@@ -122,8 +127,8 @@ class PointControl
 				ang_mov_pid.error_sum = 0;
 			}
 			twist.angular_vel = ang_mov_pid(0, dir_point, dt);
-			if((pi-std::abs(18*dir_point))>0){
-				twist.velocity=twist.velocity*(pi-std::abs(18*dir_point))/pi;
+			if((pi-std::abs(20*dir_point))>0){
+				twist.velocity=twist.velocity*(pi-std::abs(20*dir_point))/pi;
 			}else{
 				twist.velocity=0;	
 			}
@@ -152,7 +157,13 @@ class PointControl
 			twist.angular_vel=0;
 			last_ang_cont=0;
 		}
-		
+
+		const double aas=0.04;
+		if(twist.velocity-last_vel>aas && twist.velocity>0 && last_vel<vel_pid.max && move<3){
+			twist.velocity=last_vel+aas;
+		}else if(twist.velocity-last_vel<-aas && twist.velocity<0  && last_vel>vel_pid.min && move<3){
+			twist.velocity=last_vel-aas;
+		}
 	/*	if(des_dist==dist_point){
 			twist.velocity=0;
 		}
@@ -171,6 +182,7 @@ class PointControl
 		if(move!=10){
 			twist_pub.publish(twist);
 		}
+		last_vel=twist.velocity;
 	}
 	
 	void NextNodeCallback(const nord_messages::NextNode command){
@@ -198,8 +210,8 @@ class PointControl
 		}		
 
 
-		double startmove=pi/72;
-		double dist_thres=0.025;
+		double startmove=pi/60;
+		double dist_thres=0.015;
 		double dir_thres=pi/120;
 
 		double x1,y1;
@@ -239,6 +251,7 @@ class PointControl
 			twist.angular_vel=0;
 			twist.velocity=0;
 			twist_pub.publish(twist);
+			last_vel=0;
 			msg_bool.data=true;
 			//}
 			move=0;
@@ -325,6 +338,7 @@ class PointControl
 		double dt;
 		double p_vel,i_vel,d_vel; double p_ang,i_ang,d_ang;
 		double p_ang_mov, i_ang_mov, d_ang_mov;
+		double last_vel;
 		kontroll::pid<double> vel_pid; kontroll::pid<double> ang_pid; kontroll::pid<double> ang_mov_pid;
 		ros::Time old;
 		ros::Duration duration;
