@@ -9,6 +9,7 @@
 #include "nord_messages/NextNode.h"
 #include "nord_messages/PoseEstimate.h"
 #include <math.h>
+#include "std_msgs/Int32.h"
 
 #include "pid.hpp"
 
@@ -29,7 +30,7 @@ class PointControl
 		next_node_sub=n.subscribe("/nord/control/point",1,&PointControl::NextNodeCallback, this);
 		position_sub=n.subscribe("/nord/estimation/odometry",1,&PointControl::PositionCallback, this);
 		twist_pub = n.advertise<nord_messages::MotorTwist>("/nord/motor_controller/twist", 1);
-		reach_pub= n.advertise<std_msgs::Bool>("/nord/houston/mission_result", 1);
+		reach_pub= n.advertise<std_msgs::Int32>("/nord/houston/mission_result", 10);
 
 		//next_node_pub=n.advertise<nord_messages::NextNode>("/nord/control/point",1);
 		
@@ -48,23 +49,25 @@ class PointControl
 		pi = 3.141592;
 		dt=1.0/10;
 		des_dist=0;
+		sequence_number=0;
 		old=ros::Time::now();
 
-		p_ang_mov = std::stod(argv[1]); 	p_ang = std::stod(argv[4]);
+		/*p_ang_mov = std::stod(argv[1]); 	p_ang = std::stod(argv[4]);
 		i_ang_mov	= std::stod(argv[2]); 	i_ang = std::stod(argv[5]);
 		d_ang_mov = std::stod(argv[3]);   d_ang = std::stod(argv[6]);
 
 		p_vel = std::stod(argv[7]); 	
 		i_vel	= std::stod(argv[8]); 	
-		d_vel = std::stod(argv[9]);   
-		
-		/*p_vel=2; i_vel=0.08; d_vel=-0.05;
-		p_ang=1.4; i_ang=0; d_ang=-0.14;
-		p_ang_mov=4; i_ang_mov=0; d_ang_mov=-0.2;*/
+		d_vel = std::stod(argv[9]);   */
+		//2.5 0 0 2.5 0 -0.05 2 0 -0.01
+
+		p_vel=1.9; i_vel=0.0; d_vel=-0.01;
+		p_ang=2.5; i_ang=0; d_ang=-0.05;
+		p_ang_mov=2.5; i_ang_mov=0; d_ang_mov=-0.0;
 		
 		vel_pid =kontroll::pid<double>(p_vel, i_vel, d_vel);
-		vel_pid.max =  0.5;//0.7 its equal to a PWM of approximately 160 and considering the 45? degree start moving forward this is the limit
-		vel_pid.min = -0.5;
+		vel_pid.max =  0.45;//0.7 its equal to a PWM of approximately 160 and considering the 45? degree start moving forward this is the limit
+		vel_pid.min = -0.45;
 		ang_pid =kontroll::pid<double>(p_ang, i_ang, d_ang);
 		ang_pid.max =  2*pi;//it can be bigger than 45deg per sec because when its a pure turn the PWM starts at zero, and not with the forward vel
 		ang_pid.min = -2*pi;
@@ -120,6 +123,7 @@ class PointControl
 				vel_pid.error_sum = 0;
 			}*/
 			ang_cont=2;
+			ROS_INFO("ang_mov");
 			if(ang_cont!=last_ang_cont){
 				ROS_INFO("STARTED AGAIN: %f",dir_point);
 				ang_mov_pid.last_error = 0;
@@ -127,8 +131,8 @@ class PointControl
 				ang_mov_pid.error_sum = 0;
 			}
 			twist.angular_vel = ang_mov_pid(0, dir_point, dt);
-			if((pi-std::abs(20*dir_point))>0){
-				twist.velocity=twist.velocity*(pi-std::abs(20*dir_point))/pi;
+			if((pi-std::abs(15*dir_point))>0){
+				twist.velocity=twist.velocity*(pi-std::abs(15*dir_point))/pi;
 			}else{
 				twist.velocity=0;	
 			}
@@ -136,7 +140,7 @@ class PointControl
 
 		}else{
 			ang_cont=1;
-			
+			ROS_INFO("ang");
 			if(ang_cont!=last_ang_cont){
 				ROS_INFO("STARTED AGAIN: %f",dir_point);
 				ang_pid.last_error = 0;
@@ -189,12 +193,13 @@ class PointControl
 		next_x=command.x;
 		next_y=command.y;
 		move=command.move;
+		sequence_number=command.sequence_number;
 		pure_turn=1;
 
 	/*	if(msg_bool.data==false){
 			bump_flag=1;
 		}*/
-		msg_bool.data=false;
+		//msg_bool.data=false;
 	}
 	
 	void PositionCallback(const nord_messages::PoseEstimate command){
@@ -210,7 +215,7 @@ class PointControl
 		}		
 
 
-		double startmove=pi/60;
+		double startmove=pi/45;
 		double dist_thres=0.015;
 		double dir_thres=pi/120;
 
@@ -226,6 +231,13 @@ class PointControl
 		
 		if(y==0 && x==0){
 			ROS_INFO("ERROR:atan2 would return 0, control was not performed");
+			twist.angular_vel=0;
+			twist.velocity=0;
+			twist_pub.publish(twist);
+			std_msgs::Int32 msg_number;
+			msg_number.data=sequence_number;
+			reach_pub.publish(msg_number);
+			move=0;
 			return;
 		}		
 
@@ -244,7 +256,7 @@ class PointControl
 
 		
 
-		if(((dist_point<=dist_thres && move!=3) || (dir_point<=dir_thres && move==3)) && msg_bool.data==false ){//take out msg_bool....
+		if(((dist_point<=dist_thres && move!=3) || (dir_point<=dir_thres && move==3))){//take out msg_bool....
 			/*if(bump_flag==1){
 				bump_flag=0;
 			}else{*/
@@ -252,10 +264,12 @@ class PointControl
 			twist.velocity=0;
 			twist_pub.publish(twist);
 			last_vel=0;
-			msg_bool.data=true;
+			//msg_bool.data=true;
 			//}
+			std_msgs::Int32 msg_number;
+			msg_number.data=sequence_number;
 			move=0;
-			reach_pub.publish(msg_bool);
+			reach_pub.publish(msg_number);
 			ROS_INFO("Published True");
 			
 		/*	vec_i++;
@@ -345,7 +359,7 @@ class PointControl
 		std_msgs::Bool msg_bool;
 		int ang_cont;
 		int last_ang_cont;
-
+		int sequence_number;
 		int pure_turn;
 		
 		int vec_i;//testing variable dlete after
